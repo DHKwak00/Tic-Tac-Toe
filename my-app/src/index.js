@@ -2,19 +2,6 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
 
-// class Square extends React.Component {
-//   render() {
-//     return (
-//       <button 
-//         className="square" 
-//         onClick={() => this.props.onClick()}
-//       >
-//         {this.props.value} {/* props를 통한 다른 컴포넌트로부터 데이터 받기 */}
-//       </button>
-//     );
-//   }
-// }
-
 function Square(props) {
   return (
     <button className="square" onClick={props.onClick}>
@@ -24,52 +11,18 @@ function Square(props) {
 }
   
 class Board extends React.Component {
-  constructor(props) {
-    /* JavaScript 클래스에서 하위 클래스의 생성자를 정의할 때 
-      항상 super를 호출해야한다. 
-      모든 React 컴포넌트 클래스는 생성자를 가질 때 
-      super(props) 호출 구문부터 작성해야 한다.
-    */
-    super(props);
-    this.state = {
-      squares: Array(9).fill(null),
-      xIsNext: true,
-    };
-  }
-
-  handleClick(i) {
-    const squares = this.state.squares.slice();
-    if(calculateWinner(squares) || squares[i]) {
-      return;
-    } // 승자가 있거나 이미 클릭된 square면 리턴
-    squares[i] = this.state.xIsNext ? 'X' : 'O';
-    this.setState({
-      squares: squares,
-      xIsNext: !this.state.xIsNext,
-    });
-  }
-
   renderSquare(i) {
     return (
       <Square 
-        value={this.state.squares[i]} 
-        onClick={() => this.handleClick(i)}
+        value={this.props.squares[i]} 
+        onClick={() => this.props.onClick(i)}
       />
     );
   }
 
   render() {
-    const winner = calculateWinner(this.state.squares);
-    let status;
-    if(winner) {
-      status = 'winner: ' + winner;
-    }else {
-      status = 'Next player: ' + (this.state.xIsNext ? 'X' : 'O');
-    }
-
     return (
       <div>
-        <div className="status">{status}</div>
         <div className="board-row">
           {this.renderSquare(0)}
           {this.renderSquare(1)}
@@ -91,15 +44,88 @@ class Board extends React.Component {
 }
 
 class Game extends React.Component {
+  /* JavaScript 클래스에서 하위 클래스의 생성자를 정의할 때 
+    항상 super를 호출해야한다. 
+    모든 React 컴포넌트 클래스는 생성자를 가질 때 
+    super(props) 호출 구문부터 작성해야 한다.
+  */
+  constructor(props) {
+    super(props);
+    this.state = {
+      history: [{
+        squares: Array(9).fill(null),
+      }],
+      stepNumber: 0,
+      xIsNext: true, // true: X / false: O 플레이어 순서
+    }
+  }
+
+  handleClick(i) {
+    const history = this.state.history.slice(0, this.state.stepNumber + 1); // 모든 판 수 히스토리 객체의 배열
+    const current = history[history.length - 1]; // 이벤트 발생 직전 히스토리 객체
+    const squares = current.squares.slice(); // 현재 이벤트 발생 보드(배열)
+
+    if(calculateWinner(squares) || squares[i]) {
+      return;
+    } // 승자가 있거나 이미 클릭된 square면 리턴
+    
+    squares[i] = this.state.xIsNext ? 'X' : 'O';
+    this.setState({
+      history: history.concat([{
+        squares: squares,
+      }]),
+      /* 배열 push() 함수와 같이 더 익숙한 방식과 달리 
+        concat() 함수는 기존 배열을 변경하지 않기 때문에 이를 더 권장한다. 
+      */
+      stepNumber: history.length,
+      xIsNext: !this.state.xIsNext,
+      current: current,
+      squares: squares,
+    });
+    console.log("state", )
+  }
+
+  jumpTo(step) {
+    this.setState({
+      stepNumber: step,
+      xIsNext: (step % 2) === 0,
+    });
+  }
+
   render() {
+    const history = this.state.history;
+    const current = history[this.state.stepNumber];
+    const winner = calculateWinner(current.squares);
+
+    const moves = history.map((step, move) => {
+      const desc = move ?
+        'Go to move #' + move :
+        'Go to game start';
+      return (
+        <li key={move}>
+          <button onClick={() => this.jumpTo(move)}>{desc}</button>
+        </li>
+      );
+    });
+
+    let status;
+    if(winner) {
+      status = 'winner: ' + winner;
+    }else {
+      status = 'Next player: ' + (this.state.xIsNext ? 'X' : 'O');
+    }
+
     return (
       <div className="game">
         <div className="game-board">
-          <Board />
+          <Board 
+            squares={current.squares}
+            onClick={(i) => this.handleClick(i)}
+          />
         </div>
         <div className="game-info">
-          <div>{/* status */}</div>
-          <ol>{/* TODO */}</ol>
+          <div>{status}</div>
+          <ol>{moves}</ol>
         </div>
       </div>
     );
